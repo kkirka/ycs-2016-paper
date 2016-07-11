@@ -1,0 +1,134 @@
+\documentclass[procedia]{easychair}
+
+% This provides the \BibTeX macro
+\usepackage{doc}
+\usepackage{makeidx}
+% If you plan on including some algorithm specification, we recommend
+% the below package. Read more details on the custom options of the
+% package documentation.
+%
+\usepackage{algorithm2e}
+
+\def\procediaConference{99th Conference on Topics of
+	Superb Significance (COOL 2014)}
+
+%% Front Matter
+%%
+% Regular title as in the article class.
+%
+\title{Parallel Simulation of Adaptive Random Boolean Networks}
+
+% \titlerunning{} has to be set to either the main title or its shorter
+% version for the running heads. When processed by
+% EasyChair, this command is mandatory: a document without \titlerunning
+% will be rejected by EasyChair
+
+\titlerunning{Parallel Simulation of Adaptive RBNs}
+
+% Authors are joined by \and. Their affiliations are given by \inst, which indexes into the list
+% defined using \institute
+%
+\author{
+	Klavdiya Bochenina\inst{1}
+	\and
+	Kirill Kuvshinov\inst{1}
+	\and
+	Piotr Gorsky\inst{2}
+	\and
+	Janusz Holyst\inst{1}\inst{2}
+}
+
+% Institutes for affiliations are also joined by \and,
+\institute{
+	ITMO University, St. Petersburg, Russian Federation
+	\and
+	Warsaw University of Technology, Warsaw, Poland
+}
+%  \authorrunning{} has to be set for the shorter version of the authors' names;
+% otherwise a warning will be rendered in the running heads. When processed by
+% EasyChair, this command is mandatory: a document without \authorrunning
+% will be rejected by EasyChair
+
+\authorrunning{Bochenina, Kuvshinov, Gorsky, Holyst}
+
+\begin{document}
+	
+	\maketitle
+	
+	\keywords{GPGPU, Random Boolean Networks, ...}
+	
+	\begin{abstract}
+		Some abstract.
+	\end{abstract}
+	
+	
+	%------------------------------------------------------------------------------
+	\section{Introduction}
+	\label{sect:introduction}
+
+
+	%------------------------------------------------------------------------------
+	\section{Related Work}
+	\label{sect:related-work}
+
+	%------------------------------------------------------------------------------
+	\section{GPGPU algorithm for parallel attractors’ search}
+	\label{sect:algorithm}
+	\paragraph{Algorithm 1.} ... If at some point current state equals to the state at previous checkpoint, attractor is considered found, and some nodes get rewired according to the rule presented above. If the program reaches the next checkpoint (except the last one), all the information gathered between the checkpoints is discarded as it most probably corresponds to a transient period rather than the attractor. Thus, the values of the checkpoints are crucial to the overall algorithm performance.
+	\paragraph{Algorithm 2.} Hello my dear friend!
+
+	\paragraph{} Both algorithms involve sequential state updates, and one can perform these harnessing the computing capabilities of GPUs. However, the performance of the GPU implementation highly depends on the Boolean network representation it uses. It is a common approach [][] to store Boolean functions of the nodes as \(1 \times 2^{K_i}\) vectors \(\mathbf{b_i}\), where \(K_i\) is the number of input connections per \(i\)-th node. Each element of the vector corresponds to a particular inputs' states. We can represent these vector as \(N \times 2^{\max{K_i}}\) matrix \(B\).
+	
+	Having Boolean functions stored this way, one can obtain the next state of the network using one sparse matrix-vector multiplication (Eq. \ref{eq:spmv}) and one gather operation (Eq. \ref{eq:gather}).
+	
+	\begin{equation}
+	\label{eq:spmv}
+		\mathbf{v} = S \times \boldsymbol{\sigma}
+	\end{equation}
+	\begin{equation}
+	\label{eq:gather}
+		\boldsymbol{\sigma}_i = B_{i, \mathbf{v}_i}
+	\end{equation}
+	
+	These operations are well-studied and efficient algorithms for GPGPU exist \cite{bell2008efficient}\cite{he2007efficient}.
+	
+	The matrix \(S\) is constructed as defined in Eq. \ref{eq:matrix}, \ref{eq:matrix_ii}. 
+	
+	\begin{equation}
+		\label{eq:matrix}
+		S_{ij} = \begin{cases}
+			2^k, & \mbox{if } i\mbox{ is an input of } j \\
+			0, & \mbox{otherwise}
+		\end{cases} \forall i \neq j
+	\end{equation}
+	\begin{equation}
+	\label{eq:matrix_ii}
+	S_{ii} = \begin{cases}
+		1, & \mbox{if } i\mbox{ has no incoming edges }\\
+		0, & \mbox{otherwise}
+		\end{cases}
+	\end{equation}
+	
+	The special case in Eq. \ref{eq:matrix_ii} has to ensure nodes with no in-connections do not change their states. Such representation allows for experimenting with different SpMV algorithms. These algorithms mainly aim at maximizing memory throughput and data locality, thus reducing the overall GPU kernel execution time. We chose compressed sparse-row (CSR) matrix storage format and implemented an SpMV kernel as described in \cite{bell2008efficient}, as it shows the best performance on unstructured matrices.
+	
+	However, the number of state updates required to find an attractor is more important to the algorithm performance. As shown in [][] the lenghts of attractors and transient periods grow faster than a power law when the size of the network increases. As the number of state updates required is tightly connected with the length of the longest attractor a particular algotithm can find...
+	
+	%------------------------------------------------------------------------------
+	\section{Experimental Study}
+	\label{sect:experimental-study}
+	
+	%------------------------------------------------------------------------------
+	\section{Conclusion}
+	\label{sect:conclusion}
+	
+	%------------------------------------------------------------------------------
+	% Refs:
+	%
+	\label{sect:bib}
+	\bibliographystyle{plain}
+	%\bibliographystyle{alpha}
+	%\bibliographystyle{unsrt}
+	%\bibliographystyle{abbrv}
+	\bibliography{paper}
+
+\end{document}
