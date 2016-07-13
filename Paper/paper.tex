@@ -9,6 +9,10 @@
 %
 \usepackage{algorithm2e}
 
+\newcommand{\exedout} {%
+	\rule{0.8\textwidth}{0.5\textwidth}%
+}
+
 \def\procediaConference{99th Conference on Topics of
 	Superb Significance (COOL 2014)}
 
@@ -123,9 +127,27 @@
 	 
 	\paragraph{Algorithm 2.} (The description of Knuth algorithm)
 
-\paragraph{II. Updating states of nodes in parallel.} Another way to reduce an execution time of modeling is to parallelize calculations of nodes' states at a particular iteration. In this study, we propose a GPGPU algorithm which speeds up sequential heuristics of type (I). As it does not influence the logic of a search, this algorithm can be used in a combination with any sequential heuristic. The main idea of the algorithm is to update states of different nodes in a network in parallel on distinct Graphic Processor Units (GPUs). More formally,... 
+\paragraph{II. Updating states of nodes in parallel.} Another way to reduce an execution time of modeling is to parallelize calculations of nodes' states at a particular iteration. In this study, we propose a GPGPU algorithm which speeds up sequential heuristics of type (I). As it does not influence the logic of a search, this algorithm can be used in a combination with any sequential heuristic. The main idea of the algorithm is to update states of different nodes in a network in parallel on distinct Graphic Processor Units (GPUs). More formal description is presented in Algorithm \ref{algo:gpu}.
 
-	[To do. A description of parallel algorithm]
+	\begin{algorithm}[ht!]
+		\label{algo:gpu}
+		GenerateNetwork()\;
+		\While{ epoch $<$ epochsCount }
+		{
+			$gpuNetwork \leftarrow$ ConvertNetworkToGpuRepresentation()\;
+			ZeroInitialize($stateSum$)\;
+			CopyToGpu($gpuNetwork$, $currentState$, $stateSum$)\;
+			\While{attractor not found}
+			{ 	
+				UpdateStateOnGpu($currentState$, $stateSum$)\;
+			}
+			CopyFromGpu($stateSum$)\;
+			$nodesToRewire \leftarrow$ ChooseRandomNodes($N_{rew}$)\;
+			ActivityDependentRewiring($nodesToRewire$, $stateSum$)\;
+			epoch = epoch + 1\;
+		}
+		\caption{Algorithm of network evolution on GPU}
+	\end{algorithm}
 
 	\paragraph{} The performance of the GPU implementation highly depends on the Boolean network representation it uses. Since a node with inputs \(\mathbf{N_i}\) has \(2^{|\mathbf{N_i}|}\) possible combinations of inputs' state, it is a common approach to store a Boolean function of the node as \(1 \times 2^{|\mathbf{N_i}|}\) vector \(\mathbf{b_i}\). We can represent these vectors as \(N \times 2^{\max{|\mathbf{N_i}|}}\) matrix \(B\).
 	
@@ -172,7 +194,7 @@
 	\section{Experimental Study}
 	\label{sect:experimental-study}
 	
-	The modified algorithm of ARBN evolution consists of a set of consecutive epochs. In each epoch the network attractor is found and $N_{rew}$ nodes are rewired according to the modified ADRR. The maximum length of attractors $\mu_{max}$ is limited ether by predefined checkpoints in Liu-Bassler algorithm, or artificially in Knuth's algorithm in order to speed up the computations as described in Section \ref{sect:algorithm}. Due to this limitation only a fraction $R$ of the attractors is found. During the evolution process the system reaches a dynamical equilibrium, which can be observed by measuring network's mean in-degree connectivity $K$, defined in Eq. \ref{eq:connectivity}. As the entwork evolves, $K$ tends to some steady-state value $K_{ss}$.
+	The modified algorithm of ARBN evolution consists of a set of consecutive epochs. In each epoch the network attractor is found and $N_{rew}$ nodes are rewired according to the modified ADRR. The maximum length of attractors $\mu_{max}$ is limited ether by predefined checkpoints in Liu-Bassler algorithm, or artificially in Knuth's algorithm in order to speed up the computations as described in Section \ref{sect:algorithm}. Due to this limitation only a fraction $R$ of the attractors is found. During the evolution process the system reaches a dynamical equilibrium, which can be observed by measuring network's mean in-degree connectivity $K$, defined in Eq. \ref{eq:connectivity}. As the network evolves, $K$ tends to some steady-state value $K_{ss}$.
 	
 	
 	\begin{equation}
@@ -184,24 +206,56 @@
 	
 	Both algorithms were implemented using C++ programming language. The implementation is cross-platform and requires a GPU with CUDA compute capability at least 1.2. The experiments were conducted on a cluster consisting of 20 machines with NVidia GeForce GT 640 graphic cards. The results presented below are averaged over 10 realizations of the evolution process.
 	
-	
-	\begin{figure}[h!]
-		\centering
-		\includegraphics[width=0.7\textwidth]{plots/evolution}
-		\caption{Evolution of mean network connectivity}
+	\begin{figure}[ht!]
+		\begin{minipage}[t]{0.45\textwidth}
+			\includegraphics[width=1.0\textwidth]{plots/evolution}
+			\caption{Evolution of mean network connectivity}
+		\end{minipage}\hfill
+		\begin{minipage}[t]{0.45\textwidth}
+			\includegraphics[width=1.0\textwidth]{plots/n_rew}
+			\caption{Evolution of mean connectivity for different number of nodes rewired each epoch; $N=1000$}
+		\end{minipage}
 	\end{figure}
 	
-	\begin{figure}[h!]
-		\centering
-		\includegraphics[width=0.7\textwidth]{plots/n_rew}
-		\caption{Evolution of mean connectivity for different number of nodes rewired each epoch; $N=1000$}
+	\begin{figure}[ht!]
+		\begin{minipage}[t]{0.45\textwidth}
+			\centering
+			\includegraphics[width=1.0\textwidth]{plots/attractors}
+			\caption{Empirical distribution of attractor lengths}
+		\end{minipage}\hfill
+		\begin{minipage}[t]{0.45\textwidth}
+			\includegraphics[width=1.0\textwidth]{plots/speedup}
+			\caption{Execution time of the GPU algorithm compared to the serial one}
+		\end{minipage}
 	\end{figure}
 	
-	\begin{figure}[h!]
-		\centering
-		\includegraphics[width=0.7\textwidth]{plots/attractors}
-		\caption{Empirical distribution of attractor lengths}
-	\end{figure}
+	\begin{table}[ht!]
+		\begin{tabular}{r | c c c c c c}
+			& \multicolumn{6}{c}{Nodes count} \\
+			$\mu_{max}$	& 100	& 	200	&	300	&	500	&	750	&	1000\\ \hline
+			$5 \cdot 10^4$	&	99.77	&	88.19	&	71.19	&	45.48	&	29.62	&	21.20\\
+			$2.5 \cdot 10^5$	&	99.99	&	95.92	&	81.24	&	56.10	&	35.96	&	25.08\\
+			$5 \cdot 10^5$	&	100.00	&	97.43	&	86.58	&	59.36	&	38.725	&	26.95\\
+			$2.5 \cdot 10^6$	&	100.00	&	99.14	&	92.99	&	68.74	&	46.46	&	32.74\\
+			$5 \cdot 10^6$	&	100.00	&	99.53	&	94.40	&	73.00	&	49.22	&	34.88\\
+			$1 \cdot 10^7$	&	100.00	&	99.75	&	96.08	&	77.73	&	53.81	&	46.9
+		\end{tabular}
+		\caption{Percentage $R$ of attractors found during the evolution process with attractor length limeted by $\mu_{max}$}
+	\end{table}
+	\begin{table}[ht!]
+		\begin{tabular}{r | c c c c c c}
+			& \multicolumn{6}{c}{Nodes count} \\
+			$\mu_{max}$	& 100	& 	200	&	300	&	500	& 750	&	1000\\
+			\hline
+			$5 \cdot 10^4$	&	2.64	&	2.59	&	2.58	&	2.52	&	2.47	&	2.46\\
+			$2.5 \cdot 10^5$	&	2.66	&	2.60	&	2.56	&	2.51	&	2.48	&	2.46\\
+			$5 \cdot 10^5$	&	2.68	&	2.59	&	2.55	&	2.51	&	2.48	&	2.46\\
+			$2.5 \cdot 10^6$	&	2.69	&	2.60	&	2.55	&	2.51	&	2.48	&	2.47\\
+			$5 \cdot 10^6$	&	2.69	&	2.59	&	2.55	&	2.52	&	2.48	&	2.46\\
+			$1 \cdot 10^7$	&	2.68	&	2.62	&	2.55	&	2.51	&	2.48	&	2.47\\
+		\end{tabular}
+		\caption{Mean steady state connectivity $K_{ss}$ obtained as a result of evolution process with attractor length limeted by $\mu_{max}$}
+	\end{table}
 	
 	%------------------------------------------------------------------------------
 	\clearpage
