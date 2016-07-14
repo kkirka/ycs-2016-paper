@@ -127,7 +127,7 @@
 	 
 	\paragraph{Algorithm 2.} (The description of Knuth algorithm)
 
-\paragraph{II. Updating states of nodes in parallel.} Another way to reduce an execution time of modeling is to parallelize calculations of nodes' states at a particular iteration. In this study, we propose a GPGPU algorithm which speeds up sequential heuristics of type (I). As it does not influence the logic of a search, this algorithm can be used in a combination with any sequential heuristic. The main idea of the algorithm is to update states of different nodes in a network in parallel on distinct Graphic Processor Units (GPUs). More formal description is presented in Algorithm \ref{algo:gpu}.
+	\paragraph{II. Updating states of nodes in parallel.} Another way to reduce an execution time of modeling is to parallelize calculations of nodes' states at a particular iteration. In this study, we propose a GPGPU algorithm which speeds up sequential heuristics of type (I). As it does not influence the logic of a search, this algorithm can be used in a combination with any sequential heuristic. The main idea of the algorithm is to update states of different nodes in a network in parallel on distinct Graphic Processor Units (GPUs). More formal description is presented in Algorithm \ref{algo:gpu}.
 
 	\begin{algorithm}[ht!]
 		\label{algo:gpu}
@@ -147,10 +147,10 @@
 			ActivityDependentRewiring($nodesToRewire$, $stateSum$)\;
 			$epoch \leftarrow epoch + 1$\;
 		}
-		\caption{General algorithm of network evolution on GPU}
+		\caption{General algorithm of network evolution with GPU acceleration}
 	\end{algorithm}
-
-	\paragraph{} The performance of the GPU implementation highly depends on the Boolean network representation it uses. Since a node with inputs \(\mathbf{N_i}\) has \(2^{|\mathbf{N_i}|}\) possible combinations of inputs' state, it is a common approach to store a Boolean function of the node as \(1 \times 2^{|\mathbf{N_i}|}\) vector \(\mathbf{b_i}\). We can represent these vectors as \(N \times 2^{\max{|\mathbf{N_i}|}}\) matrix \(B\).
+	
+	The performance of the GPU implementation highly depends on the Boolean network representation it uses. Since a node with inputs \(\mathbf{N_i}\) has \(2^{|\mathbf{N_i}|}\) possible combinations of inputs' state, it is a common approach to store a Boolean function of the node as \(1 \times 2^{|\mathbf{N_i}|}\) vector \(\mathbf{b_i}\). We can represent these vectors as \(N \times 2^{\max{|\mathbf{N_i}|}}\) matrix \(B\).
 	
 	Having Boolean functions stored this way, one can obtain the next state of the network using one sparse matrix-vector multiplication (Eq. (\ref{eq:spmv})) and one gather operation (Eq. (\ref{eq:gather})).
 	
@@ -207,12 +207,15 @@
 	
 	Both algorithms were implemented using C++ programming language. The implementation is cross-platform and requires a GPU with CUDA compute capability at least 1.2. 
 	
-	To test the applicability of the approaches presented in Section \ref{sect:algorithm}, a set of experiments was performed. The experiments were conducted on a cluster consisting of 20 nodes with NVidia GeForce GT 640 graphic cards. The results below were obtained by averaging over 10 realizations of the evolution process. 
+	To test the applicability of the approaches presented in Section \ref{sect:algorithm}, a set of experiments was performed. The experiments were conducted on a cluster consisting of 20 nodes with NVidia GeForce GT 640 graphic cards. In this study we considered only the networks with initial in-degree connectivity $K_{ini}=2$. The results were averaged over 10 realizations of the evolution process.
+	
+	\paragraph{Speedup obtained by GPU acceleration.} We measured the execution times of both serial and parallel versions of state updates. We used Liu-Bassler algorithm with checkpoints $T$ = $\{100,$ $200,$ $1000,$ $2000,$ $...,$ $10^7,$ $2 \cdot 10^7\}$, $\mu_{max} = 10^7$. To decrease the number of random samples required to compare the versions, we did not stop the epoch as soon as an attractor was found. Instead, we performed all $2 \cdot 10^7$ state updates per epoch. Such simulation corresponds to the worst-case scenario when no attractors were found, i. e. $R = 0\%$. The results presented in Figure \ref{fig:speedup} indicate that the GPU implementation is more efficient than the serial one for networks consisting of more than $200$ nodes.
 	
 	\begin{figure}[ht!]
 		\begin{minipage}[t]{0.45\textwidth}
-			\includegraphics[width=1.0\textwidth]{plots/evolution}
-			\caption{Evolution of mean network connectivity}
+			\includegraphics[width=1.0\textwidth]{plots/speedup}
+			\caption{Execution time of the GPU algorithm compared to the serial one}
+			\label{fig:speedup}
 		\end{minipage}\hfill
 		\begin{minipage}[t]{0.45\textwidth}
 			\includegraphics[width=1.0\textwidth]{plots/n_rew}
@@ -220,19 +223,12 @@
 		\end{minipage}
 	\end{figure}
 	
-	\begin{figure}[ht!]
-		\begin{minipage}[t]{0.45\textwidth}
-			\centering
-			\includegraphics[width=1.0\textwidth]{plots/attractors}
-			\caption{Empirical distribution of attractor lengths}
-		\end{minipage}\hfill
-		\begin{minipage}[t]{0.45\textwidth}
-			\includegraphics[width=1.0\textwidth]{plots/speedup}
-			\caption{Execution time of the GPU algorithm compared to the serial one}
-		\end{minipage}
-	\end{figure}
+	\paragraph{Rewiring more than one node per epoch.}
+	
+	\paragraph{Limiting the maximum attractor length.}
 	
 	\begin{table}[ht!]
+		\centering
 		\begin{tabular}{r | c c c c c}
 			& \multicolumn{5}{c}{Nodes count} \\
 			$\mu_{max}$	& 100	& 	200	&	300	&	500	&	750\\ \hline
@@ -243,9 +239,10 @@
 			$5 \cdot 10^6$	&	100.00	&	99.53	&	94.40	&	73.00	&	49.22\\
 			$1 \cdot 10^7$	&	100.00	&	99.75	&	96.08	&	77.73	&	53.81\\
 		\end{tabular}
-		\caption{Percentage $R$ of attractors found during the evolution process with attractor length limeted by $\mu_{max}$}
+		\caption{Percentage $R$ of attractors found during the evolution process with attractor length limited by $\mu_{max}$}
 	\end{table}
 	\begin{table}[ht!]
+		\centering
 		\begin{tabular}{r | c c c c c}
 			& \multicolumn{5}{c}{Nodes count} \\
 			$\mu_{max}$	& 100	& 	200	&	300	&	500	& 750\\
@@ -257,8 +254,20 @@
 			$5 \cdot 10^6$	&	2.69	&	2.59	&	2.55	&	2.52	&	2.48\\
 			$1 \cdot 10^7$	&	2.68	&	2.62	&	2.55	&	2.51	&	2.48\\
 		\end{tabular}
-		\caption{Mean steady state connectivity $K_{ss}$ obtained as a result of evolution process with attractor length limeted by $\mu_{max}$}
+		\caption{Mean steady state connectivity $K_{ss}$ obtained as a result of evolution process with attractor length limited by $\mu_{max}$}
 	\end{table}
+	
+	\begin{figure}[ht!]
+		\begin{minipage}[t]{0.45\textwidth}
+			\includegraphics[width=1.0\textwidth]{plots/evolution}
+			\caption{Evolution of mean network connectivity}
+		\end{minipage}\hfill
+		\begin{minipage}[t]{0.45\textwidth}
+			\centering
+			\includegraphics[width=1.0\textwidth]{plots/attractors}
+			\caption{Empirical distribution of attractor lengths}
+		\end{minipage}
+	\end{figure}
 	
 	%------------------------------------------------------------------------------
 	\clearpage
