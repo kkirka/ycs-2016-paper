@@ -227,9 +227,9 @@ The modified algorithm of ARBN evolution consists of a set of consecutive epochs
 		\end{minipage}
 	\end{figure}
 	
-	\paragraph{Rewiring more than one node per epoch.} In order to determine how $N_{rew}$ influences the rate of convergence to a dynamical equilibrium, we performed $1000$ epochs of evolution with $N=1000$ and $N_{rew}=[1, 5]$. The results of these simulations are shown in Figure \ref{fig:nrew}. With increased value of $N_{rew}$ mean connectivity grows faster and the system reaches steady state at approximately 500th epoch for $N_{rew}=5$. We limited the attractor length to $\mu_{max}=10^7$ for these experiments.
+	\paragraph{Rewiring more than one node per epoch.} In order to determine how $N_{rew}$ influences the rate of convergence to a dynamical equilibrium, we performed $1000$ epochs of evolution with $N=1000$ and $N_{rew}=[1, 5]$. The results of these simulations are shown in Figure \ref{fig:nrew}. With increased value of $N_{rew}$ mean connectivity grows faster and the system reaches steady state at approximately 500th epoch for $N_{rew}=5$. Therefore, we conclude that by rewiring $N_{rew} > 1$ nodes per epoch one can lower the number of epochs required to reach steady state. We limited the attractor length to $\mu_{max}=10^7$ for these experiments.
 	
-	\paragraph{Limiting the maximum attractor length.} Introducing a limit on attractor length leads to a situation when an attractor can not be found. In these cases $N_{rew}$ nodes are rewired according to their activity during the last $\mu_max$ state updates. These states can belong either to a transient period or an attractor. However, the results of our experiments, presented in Tables \ref{table:percentage_of_attractors}, \ref{table:kss}, indicate that low percentage of attractors found does not influence the steady state connectivity obtained as a result of the evolution process.
+	\paragraph{Limiting the maximum attractor length.} Introducing a limit on attractor length leads to a situation when an attractor can not be found. In these cases $N_{rew}$ nodes are rewired according to their activity during the last $\mu_{max}$ state updates. These states can belong to either a transient period or an attractor. However, the results of our experiments, presented in Tables \ref{table:percentage_of_attractors}, \ref{table:kss}, indicate that low percentage of attractors found does not influence the steady state connectivity obtained as a result of the evolution process.
 	
 	\begin{table}[ht!]
 		\centering
@@ -263,16 +263,20 @@ The modified algorithm of ARBN evolution consists of a set of consecutive epochs
 		\label{table:kss}
 	\end{table}
 	
-	\paragraph{Limiting the maximum attractor length.}
-	\begin{figure}[ht!]
+	Using the approaches discussed above we were able perform simulations on networks consisting of up to 1000 nodes. Plots of the evolution of mean in-degree connectivity and the empirical distribution of attractor lengths are shown in Figures \ref{fig:evolution} and \ref{fig:attractors} respectively. The peaks near $\mu=10^7$ in Figure \ref{fig:attractors} are caused by the limit on the attractor length $\mu_{max} = 10^7$.
+	
+	
+	\begin{figure}[h]
 		\begin{minipage}[t]{0.45\textwidth}
 			\includegraphics[width=1.0\textwidth]{plots/evolution}
 			\caption{Evolution of mean network connectivity}
+			\label{fig:evolution}
 		\end{minipage}\hfill
 		\begin{minipage}[t]{0.45\textwidth}
 			\centering
 			\includegraphics[width=1.0\textwidth]{plots/attractors}
 			\caption{Empirical distribution of attractor lengths}
+			\label{fig:attractors}
 		\end{minipage}
 	\end{figure}
 	%------------------------------------------------------------------------------
