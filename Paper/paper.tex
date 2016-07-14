@@ -9,10 +9,6 @@
 %
 \usepackage{algorithm2e}
 
-\newcommand{\exedout} {%
-	\rule{0.8\textwidth}{0.5\textwidth}%
-}
-
 \def\procediaConference{99th Conference on Topics of
 	Superb Significance (COOL 2014)}
 
@@ -33,9 +29,9 @@
 % defined using \institute
 %
 \author{
-	Klavdiya Bochenina\inst{1}
-	\and
 	Kirill Kuvshinov\inst{1}
+	\and
+	Klavdiya Bochenina\inst{1}
 	\and
 	Piotr Gorsky\inst{2}
 	\and
@@ -53,16 +49,16 @@
 % EasyChair, this command is mandatory: a document without \authorrunning
 % will be rejected by EasyChair
 
-\authorrunning{Bochenina, Kuvshinov, Gorsky, Holyst}
+\authorrunning{Kuvshinov, Bochenina, Gorsky, Holyst}
 
 \begin{document}
 	
 	\maketitle
 	
-	\keywords{TBD}
+	\keywords{adaptive random boolean networks, GPGPU algorithm, parallel simulation}
 	
 	\begin{abstract}
-		TBD
+		A random boolean network (RBN) is a generic model of interactions between entities with binary states that has applications in different fields. As real-world systems often operate on the border between order and chaos, the algorithms of RBN's transition to a critical state are of particular interest. Adaptive RBNs can evolve towards a critical state by rewiring nodes according to their states on the attractor. Numerical simulation of adaptive RBN larger than several dozens of nodes is computationally hard due to the enormous growth of the lengths of attractors and transient periods. In this paper, we propose GPGPU algorithm for parallel simulation of adaptive RBNs with modified activity-dependent rewiring rule which can be used with any sequential algorithm for attractor's search. In the experimental part of the study, we investigate the performance of parallel implementation and the influence of parameters of the algorithm on the speed of convergence to a steady state. 
 	\end{abstract}
 	
 	
@@ -107,11 +103,19 @@
 	Here, we do not include modularity into ARBN model. 
 	This research is a step towards large scale simulations of modular ARBNs \cite{Gorski2016}. To investigate large ARBNs, we design a parallel algorithm for simulation of ARBN's evolution and combine it with several algorithmic improvements.
 	
-	The remaining part of the paper is organized as follows. Section 2 gives an overview of a related work on algorithmics of RBN modeling. Section 3 presents a description of algorithms and techniques which were used to speed up simulations (including an algorithm for parallel simulation of adaptive RBNs). Section 4 (experimental investigation) has two-fold purpose: (i) study the performance of the parallel algorithm and the influence of proposed modifications on simulation results, and (ii) study the dynamics of evolution of non-modular ARBNs up to 1000 nodes.
+	The remaining part of the paper is organized as follows. Section 2 gives an overview of a related work on algorithmics of RBN modeling. Section 3 presents a description of algorithms and techniques which were used to speed up simulations (including an algorithm for parallel simulation of adaptive RBNs). Section 4 (an experimental investigation) has two-fold purpose: (i) to study the performance of the parallel algorithm and the influence of proposed modifications on simulation results, and (ii) to study the dynamics of evolution of non-modular ARBNs up to 1000 nodes.
 
 	%------------------------------------------------------------------------------
 	\section{Related Work}
 	\label{sect:related-work}
+	In recent years, a variety of RBNs has been extensively studied by the means of computer simulation. Basically, an initial topology, a set of boolean functions and an updating scheme (synchronous or asynchronous) \cite{gershenson04} are fixed. In contrast, adaptive RBN can evolve by changing links and/or boolean functions of nodes. Bornholdt and Sneppen in \cite{bornholdt1998neutral} introduced an algorithm for RBN's evolution under the constraint of continuity. In the algorithm, a degree of a randomly chosen node is modified only when a network with this modification reaches the same attractor as the mother system did. Paczuski, Bassler and Corral in \cite{paczuski2000self} consider nodes of RBN as competing agents in a market. The evolution of network is maintained by a random change of the poorest player's strategy at each epoch of simulation. ADDR as a mechanism for transition of RBN to a critical state was proposed in \cite{bornholdt2000topological} and then extended in \cite{mlb} for annealed and quenched versions of a model. Both in  \cite{bornholdt2000topological} and \cite{mlb} ADDR changes a single randomly chosen node per iteration according to its average state on the attractor; the difference is that in \cite{mlb} boolean functions of nodes can also be changed at the end of the epoch. 
+	
+	Simulation of a single epoch for adaptive RBN consists of two steps, search for an attractor and modification of a network according to chosen rules. Depending on the goal of simulation, it could be necessary to find a single attractor for a given initial state or all the attractors of a system. Zhang et. al. in \cite{zhang2007algorithms} propose algorithms to find singleton attractors of RBN using gene ordering. To find a single attractor of an arbitrary length, there are two main algorithms: Knuth's algorithm \cite{knuth1981art} (the example of its usage for RBN's simulation can be found in \cite{bhattacharjya1996median}) and the algorithm described in \cite{mlb} (we denote it as Liu-Bassler). We include the brief description of these algorithms in Section 3 of this paper as they serve as a basis for our parallel algorithm. The second category includes algorithms to find all attractors for a given network. These algorithms usually reformulate basic task as binary decision diagrams, satisfiability (SAT) or aggregation problems. For the asynchronous update mode, there was proposed an approach based on an exhaustive enumeration of subspaces of a network space implemented in Inet software package \cite{berntenis2013detection}. Some of the algorithms of this type allow parallel implementation (e.g. \cite{guo2014parallel}). Parallelization is performed by calculating different attractors (or sets of attractors) for the same network on different processors, and is not appropriate for ADDR having data dependency between epochs. 
+	
+	Another way to speed up a simulation of RBN is to choose appropriate data types and data structures to keep a network, and use efficient implementations of nodes' update function. The example of this approach can be found in \cite{hawick2007simulating} where authors explore high-performance data structures and algorithms for large-scale simulations of RBNs for D programming language. They examine the memory complexity and the performance of the RBN simulation code for 256 iterations (for networks up to 2,5 million nodes) and for 8 iterations (for networks up to 20,5 million nodes). However, the applicability of the results for ARBNs is restricted as a simulation of an evolution of large networks becomes computationally intractable because of an enormous number of iterations rather than a large execution time of a single iteration.
+	
+	Due to the exponential slowing down by long attractor periods for initial connectivity $K_{ini} \geq 2$, usually it is necessary to put the restrictions on a maximum number of iterations to be examined during a single search for attractor (it is denoted as $T_{max}$). In \cite{bornholdt2000topological}, authors use $T_{max} = 1000$ which allows them to study networks up to 1024 nodes. In \cite{mlb}, $T_{max}$ is set up to 100 000, and the maximum size of a studied network is equal to 400 nodes. Increase of a size of a network with fixed $T_{max}$ leads to skipping a significant number of the attractors. However, authors of \cite{bornholdt2000topological} and \cite{mlb} do not consider a percentage of attractors found, and how the results of simulation are influenced by skipped attractors.
+	
 
 	%------------------------------------------------------------------------------
 	\section{Algorithms to Speed up Simulation of ARBNs}
@@ -123,17 +127,16 @@
 	\paragraph{I. Sequential heuristics for attractor's search.} The naive implementation of an algorithm for attractor's search is to compare a current state $\mathbf{S}(t)$ to all the previous states at each iteration. This requires $O(l^2)$ time and $O(l)$ memory where $l$ is a sum of attractor and transient lengths. 	
 	To speed up searching for attractors in comparison with the naive implementation a number of sequential heuristics have been proposed. These algorithms do not perform the exhaustive comparisons of states. Here we briefly describe and discuss two sequential algorithms which have been used in previous studies on ARBN \cite{mlb,Gorski2016}. We also use them as basic algorithms for a parallel algorithm introduced in this paper.
 	
-	\paragraph{Algorithm 1.} This is the algorithm that was used in the original paper introducing Adaptive RBNs \cite{mlb}.  It is based on a set of checkpoints $\mathbf{T} = \{T_0, T_1, T_2, ... T_n\}$. If at some time point $t$ current state $\mathbf{S}(t)$ equals to the state at the checkpoint $\mathbf{S}(T_i)$, an attractor is considered to be found, and some nodes get rewired according to the ADRR presented above. If the program reaches the next checkpoint (except the last one), and $\mathbf{S}(t) \neq \mathbf{S}(T_i) \forall t \in [T_i, T_{i+1})$, all the information gathered between the checkpoints is discarded as it most probably corresponds to a transient period rather than the attractor, and $T_{i+1}$ becomes the new checkpoint. The longest attractor that can be found using this algorithm equals to the maximum distance between the checkpoints. However, if the distance between the checkpoints is too large, more state updates then necessary are performed. Thus, the values of the checkpoints are crucial to the overall algorithm performance and correctness.
+	\paragraph{Algorithm 1 (Liu-Bassler)} This is the algorithm that was used in the original paper introducing Adaptive RBNs \cite{mlb}.  It is based on a set of checkpoints $\mathbf{T} = \{T_0, T_1, T_2, ... T_n\}$. If at some time point $t$ current state $\mathbf{S}(t)$ equals to the state at the checkpoint $\mathbf{S}(T_i)$, an attractor is considered to be found, and some nodes get rewired according to the ADRR presented above. If the program reaches the next checkpoint (except the last one), and $\mathbf{S}(t) \neq \mathbf{S}(T_i)$ $ \forall t \in [T_i, T_{i+1})$, all the information gathered between the checkpoints is discarded as it most probably corresponds to a transient period rather than the attractor, and $T_{i+1}$ becomes the new checkpoint. The longest attractor that can be found using this algorithm equals to the maximum distance between the checkpoints. However, if the distance between the checkpoints is too large, more state updates then necessary are performed. Thus, the values of the checkpoints are crucial to the overall algorithm performance and correctness.
 	 
-	\paragraph{Algorithm 2.} (The description of Knuth algorithm)
+	\paragraph{Algorithm 2 (Knuth)} (The description of Knuth algorithm)
 
-	\paragraph{II. Updating states of nodes in parallel.} Another way to reduce an execution time of modeling is to parallelize calculations of nodes' states at a particular iteration. In this study, we propose a GPGPU algorithm which speeds up sequential heuristics of type (I). As it does not influence the logic of a search, this algorithm can be used in a combination with any sequential heuristic. The main idea of the algorithm is to update states of different nodes in a network in parallel on distinct Graphic Processor Units (GPUs). More formal description is presented in Algorithm \ref{algo:gpu}.
+\paragraph{II. Updating states of nodes in parallel.} Another way to reduce an execution time of modeling is to parallelize calculations of nodes' states at a particular iteration. In this study, we propose a GPGPU algorithm which speeds up sequential heuristics of type (I). As it does not influence the logic of a search, this algorithm can be used in a combination with any sequential heuristic. The main idea of the algorithm is to update states of different nodes in a network in parallel on distinct Graphic Processor Units (GPUs). More formal description is presented in Algorithm \ref{algo:gpu}.
 
 	\begin{algorithm}[ht!]
 		\label{algo:gpu}
 		GenerateNetwork()\;
-		$epoch \leftarrow 0$\;
-		\While{ $epoch < epochsCount$ }
+		\While{ epoch $<$ epochsCount }
 		{
 			$gpuNetwork \leftarrow$ ConvertNetworkToGpuRepresentation()\;
 			ZeroInitialize($stateSum$)\;
@@ -145,12 +148,12 @@
 			CopyFromGpu($stateSum$)\;
 			$nodesToRewire \leftarrow$ ChooseRandomNodes($N_{rew}$)\;
 			ActivityDependentRewiring($nodesToRewire$, $stateSum$)\;
-			$epoch \leftarrow epoch + 1$\;
+			epoch = epoch + 1\;
 		}
-		\caption{General algorithm of network evolution with GPU acceleration}
+		\caption{GPGPU algorithm for ARBN simulation}
 	\end{algorithm}
-	
-	The performance of the GPU implementation highly depends on the Boolean network representation it uses. Since a node with inputs \(\mathbf{N_i}\) has \(2^{|\mathbf{N_i}|}\) possible combinations of inputs' state, it is a common approach to store a Boolean function of the node as \(1 \times 2^{|\mathbf{N_i}|}\) vector \(\mathbf{b_i}\). We can represent these vectors as \(N \times 2^{\max{|\mathbf{N_i}|}}\) matrix \(B\).
+
+	\paragraph{} The performance of the GPU implementation highly depends on the Boolean network representation it uses. Since a node with inputs \(\mathbf{N_i}\) has \(2^{|\mathbf{N_i}|}\) possible combinations of inputs' state, it is a common approach to store a Boolean function of the node as \(1 \times 2^{|\mathbf{N_i}|}\) vector \(\mathbf{b_i}\). We can represent these vectors as \(N \times 2^{\max{|\mathbf{N_i}|}}\) matrix \(B\).
 	
 	Having Boolean functions stored this way, one can obtain the next state of the network using one sparse matrix-vector multiplication (Eq. (\ref{eq:spmv})) and one gather operation (Eq. (\ref{eq:gather})).
 	
@@ -182,7 +185,9 @@
 		\end{cases}
 	\end{equation}
 	
-	%However, the lenghts of attractors and transient periods grow %faster than a power law[][] when the size of the network %increases. This leads to a proportional growth of state updates %one has to perform to find an attractor. The number of state %updates turned out to be more important to the algorithm %performance due to the lags between GPU kernel launches and the %need to transfer data back from the GPU. 
+	 Such representation supports different SpMV algorithms. These algorithms mainly aim at maximizing memory throughput and data locality, thus reducing the overall GPU kernel execution time. We chose compressed sparse-row (CSR) matrix storage format and implemented an SpMV kernel as described in \cite{bell2008efficient}, as it shows the best performance on unstructured matrices.
+	
+	However, the lenghts of attractors and transient periods grow faster than a power law[][] when the size of the network increases. This leads to a proportional growth of state updates one has to perform to find an attractor. The number of state updates turned out to be more important to the algorithm performance due to the lags between GPU kernel launches and the need to transfer data back from the GPU. 
 	
 	\paragraph{III. Limiting the number of state updates.} For RBN in a critical state, lengths of attractors and transients tend to have a power-law distribution with an exponent of -1 \cite{greil2009attractor}. This implies that a number of attractors with a given length is in inverse proportion to that length, i.e. a major part of attractors has comparatively small lengths. During evolution of ARBN, the goal is to find an attractor at each epoch, and then modify the topology of a network according to a state of a randomly chosen node on the attractor. While searching for an attractor, one can add a limitation on a maximum number of iterations which will be examined for a single epoch. In Liu-Bassler algorithm this limitation is a part of the algorithm itself (as it has predefined checkpoints) while in Knuth's algorithm is can be added artificially. The logic behind this approach is that lengthy attractors are rare, so a limitation can be set in a way that will not significantly influence the dynamic of convergence to a steady state. In this study we address the question: to what extent such limiting influence the qualitative results of simulation? In other words, we study how the results of ARBN evolution will differ if we eliminate from consideration a part of lengthy attractors (extending the results which were reported in \cite{Gorski2016}).
 	\paragraph{IV. Rewiring different number of nodes per epoch.} I (heuristics for attractor's search), II (parallel algorithm of updating the states) and III (limiting the number of state updates) are aimed to reduce an execution time of a single epoch. The total execution time is equal to the summation of times for all epochs, and the total number of epochs should be sufficient to reach the steady state. Therefore, another way to speed up the modeling process is to reduce a number of epochs which is required to achieve steady state. In this paper, we propose to perform it by a modification of ADRR intoduced in \cite{mlb}. Instead of rewiring a single node per epoch, we suggest to use several nodes as it could speed up the convergence to a steady state (especially for large networks) and, as a result, significantly decrease total time of simulation.
@@ -193,7 +198,7 @@
 	\section{Experimental Study}
 	\label{sect:experimental-study}
 	
-	The modified algorithm of ARBN evolution consists of a set of consecutive epochs. In each epoch the network attractor is found and $N_{rew}$ nodes are rewired according to the modified ADRR. The maximum length of attractors $\mu_{max}$ is limited ether by predefined checkpoints in Liu-Bassler algorithm, or artificially in Knuth's algorithm in order to speed up the computations as described in Section \ref{sect:algorithm}. Due to this limitation only a fraction $R$ of the attractors is found. During the evolution process the system reaches a dynamical equilibrium, which can be observed by measuring network's mean in-degree connectivity $K$, defined in Eq. \ref{eq:connectivity}. As the network evolves, $K$ tends to some steady-state value $K_{ss}$.
+The modified algorithm of ARBN evolution consists of a set of consecutive epochs. In each epoch the network attractor is found and $N_{rew}$ nodes are rewired according to the modified ADRR. The maximum length of attractors $\mu_{max}$ is limited ether by predefined checkpoints in Liu-Bassler algorithm, or artificially in Knuth's algorithm in order to speed up the computations as described in Section \ref{sect:algorithm}. Due to this limitation only a fraction $R$ of the attractors is found. During the evolution process the system reaches a dynamical equilibrium, which can be observed by measuring network's mean in-degree connectivity $K$, defined in Eq. \ref{eq:connectivity}. As the network evolves, $K$ tends to some steady-state value $K_{ss}$.
 	
 	
 	\begin{equation}
@@ -201,7 +206,7 @@
 		K(t) = N^{-1} \sum_{i=1}^{N} {|\mathbf{N}_i(t)|}
 	\end{equation}
 	
-	Intuitively, Liu-Bassler algorithm of attractor search would have shown better performance than the Knuth's one, as the latter requires at least $3 \mu$ state updates to find an attractor of length $\mu$. But in order to use Liu-Bassler algorithm one needs to choose the checkpoints correctly, which requires an a-priori knowledge of attractor and transient period distributions. This distribution depends on a network size, connectivity and structure (e. g. modular networks tend to have longer (shorter?) attractors than non-modular ones [ref]). We obtained an empirical distribution of attractor and transient lengths for different kinds of networks in our preliminary experiments with Knuth's algorithm. The checkpoints $T=[100, 200, 1000, 2000, ... \mu_{max}, 2 \mu_{max}]$ seem to be the best trade-off between the number of state updates and the percentage of attractors found. However, with these checkpoints the difference in the number of state updates between the two algorithms is negligible. We used Knuth's algorithm in our future experiments, as it is more general and requires no a-priori knowledge of the network's behaviour.
+	Intuitively, Liu-Bassler algorithm of attractor's search would have shown better performance than the Knuth's one, as the latter requires at least $3 \mu$ state updates to find an attractor of length $\mu$. But in order to use Liu-Bassler algorithm one needs to choose the checkpoints correctly, which requires an a-priori knowledge of attractor and transient period distributions. This distribution depends on a network size, connectivity and structure (e. g. modular networks tend to have longer (shorter?) attractors than non-modular ones [ref]). We obtained an empirical distribution of attractor and transient lengths for different kinds of networks in our preliminary experiments with Knuth's algorithm. The checkpoints $T=[100, 200, 1000, 2000, ... \mu_{max}, 2 \mu_{max}]$ seem to be the best trade-off between the number of state updates and the percentage of attractors found. However, with these checkpoints the difference in the number of state updates between the two algorithms is negligible. We used Knuth's algorithm in our future experiments, as it is more general and requires no a-priori knowledge of the network's behaviour.
 	
 	Both algorithms were implemented using C++ programming language. The implementation is cross-platform and requires a GPU with CUDA compute capability at least 1.2. The representation of RBNs' state update function defined in Eq. \ref{eq:spmv}, \ref{eq:gather} allows for experimenting with different SpMV algorithms. These algorithms mainly aim at maximizing memory throughput and data locality, thus reducing the overall GPU kernel execution time. We chose compressed sparse-row (CSR) matrix storage format and implemented an sparse matrix-vector multiplication kernel as described in \cite{bell2008efficient}, as it shows the best performance on unstructured matrices.
 	
@@ -266,10 +271,15 @@
 			\caption{Empirical distribution of attractor lengths}
 		\end{minipage}
 	\end{figure}
-	
 	%------------------------------------------------------------------------------
 	\clearpage
 	\section{Conclusion}
+	The enormous size of RBN ensemble makes them appropriate to model various complex systems but also raises significant challenges for their numerical investigation. Even a problem of search for a single attractor of RBN is computationally hard for a networks larger than several dozens of nodes because of an exponential growth of a number of iterations with an increase of a network size.
+	
+	Finding an attractor for RBN with a given initial state is a basic operation performed for adaptive RBN which change their topology using information about the activity of nodes on the attractor. In this study, we propose a parallel algorithm for GPGPU to speed up simulation of adaptive RBNs which can be used with different sequential algorithms for attractor's search. In addition to updating states for distinct nodes in parallel, we use modified activity-dependent rewiring rule to reduce a number of epochs required for a single run.
+	
+	Using the algorithm, we performed simulation of networks up to 1000 nodes on a hybrid cluster with NVidia graphic cards. The parallel algorithm demonstrates increasing performance with a growth of a network size (for 1000-nodes network it is approximately 8 times faster than a sequential one). The results show that proposed modification of the rewiring rule allows to reduce a number of epochs to reach a steady state making calculations less time-consumable. We also present the results for a percentage of attractors found for different combinations of sizes of networks and maximum number of iterations examined during search for a single attractor. These values together with the results on mean steady state connectivity can be used for a choice of values of checkpoints in the sequential algorithms of attractor's search.   
+	
 	\label{sect:conclusion}
 	
 	%------------------------------------------------------------------------------
