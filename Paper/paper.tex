@@ -127,9 +127,9 @@
 	\paragraph{I. Sequential heuristics for attractor's search.} The naive implementation of an algorithm for attractor's search is to compare a current state $\mathbf{S}(t)$ to all the previous states at each iteration. This requires $O(l^2)$ time and $O(l)$ memory where $l$ is a sum of attractor and transient lengths. 	
 	To speed up searching for attractors in comparison with the naive implementation a number of sequential heuristics have been proposed. These algorithms do not perform the exhaustive comparisons of states. Here we briefly describe and discuss two sequential algorithms which have been used in previous studies on ARBN \cite{mlb,Gorski2016}. We also use them as basic algorithms for a parallel algorithm introduced in this paper.
 	
-	\paragraph{Algorithm 1 (Liu-Bassler)} This is the algorithm that was used in the original paper introducing Adaptive RBNs \cite{mlb}.  It is based on a set of checkpoints $\mathbf{T} = \{T_0, T_1, T_2, ... T_n\}$. If at some time point $t$ current state $\mathbf{S}(t)$ equals to the state at the checkpoint $\mathbf{S}(T_i)$, an attractor is considered to be found, and some nodes get rewired according to the ADRR presented above. If the program reaches the next checkpoint (except the last one), and $\mathbf{S}(t) \neq \mathbf{S}(T_i)$ $ \forall t \in [T_i, T_{i+1})$, all the information gathered between the checkpoints is discarded as it most probably corresponds to a transient period rather than the attractor, and $T_{i+1}$ becomes the new checkpoint. The longest attractor that can be found using this algorithm equals to the maximum distance between the checkpoints. However, if the distance between the checkpoints is too large, more state updates then necessary are performed. Thus, the values of the checkpoints are crucial to the overall algorithm performance and correctness.
+	\paragraph{Liu-Bassler algorithm.} This is the algorithm that was used in the original paper introducing Adaptive RBNs \cite{mlb}.  It is based on a set of checkpoints $\mathbf{T} = \{T_0, T_1, T_2, ... T_n\}$. If at some time point $t$ current state $\mathbf{S}(t)$ equals to the state at the checkpoint $\mathbf{S}(T_i)$, an attractor is considered to be found, and some nodes get rewired according to the ADRR presented above. If the program reaches the next checkpoint (except the last one), and $\mathbf{S}(t) \neq \mathbf{S}(T_i)$ $ \forall t \in [T_i, T_{i+1})$, all the information gathered between the checkpoints is discarded as it most probably corresponds to a transient period rather than the attractor, and $T_{i+1}$ becomes the new checkpoint. The longest attractor that can be found using this algorithm equals to the maximum distance between the checkpoints. However, if the distance between the checkpoints is too large, more state updates then necessary are performed. Thus, the values of the checkpoints are crucial to the overall algorithm performance and correctness.
 	 
-	\paragraph{Algorithm 2 (Knuth)} (The description of Knuth algorithm)
+	\paragraph{Knuth algorithm.} (The description of Knuth algorithm)
 
 \paragraph{II. Updating states of nodes in parallel.} Another way to reduce an execution time of modeling is to parallelize calculations of nodes' states at a particular iteration. In this study, we propose a GPGPU algorithm which speeds up sequential heuristics of type (I). As it does not influence the logic of a search, this algorithm can be used in a combination with any sequential heuristic. The main idea of the algorithm is to update states of different nodes in a network in parallel on distinct Graphic Processor Units (GPUs). More formal description is presented in Algorithm \ref{algo:gpu}.
 
@@ -203,7 +203,7 @@ The modified algorithm of ARBN evolution consists of a set of consecutive epochs
 	
 	\begin{equation}
 	\label{eq:connectivity}
-		K(t) = N^{-1} \sum_{i=1}^{N} {|\mathbf{N}_i(t)|}
+		K = N^{-1} \sum_{i=1}^{N} {|\mathbf{N}_i|}
 	\end{equation}
 	
 	Intuitively, Liu-Bassler algorithm of attractor's search would have shown better performance than the Knuth's one, as the latter requires at least $3 \mu$ state updates to find an attractor of length $\mu$. But in order to use Liu-Bassler algorithm one needs to choose the checkpoints correctly, which requires an a-priori knowledge of attractor and transient period distributions. This distribution depends on a network size, connectivity and structure (e. g. modular networks tend to have longer (shorter?) attractors than non-modular ones [ref]). We obtained an empirical distribution of attractor and transient lengths for different kinds of networks in our preliminary experiments with Knuth's algorithm. The checkpoints $T=[100, 200, 1000, 2000, ... \mu_{max}, 2 \mu_{max}]$ seem to be the best trade-off between the number of state updates and the percentage of attractors found. However, with these checkpoints the difference in the number of state updates between the two algorithms is negligible. We used Knuth's algorithm in our future experiments, as it is more general and requires no a-priori knowledge of the network's behaviour.
@@ -217,18 +217,19 @@ The modified algorithm of ARBN evolution consists of a set of consecutive epochs
 	\begin{figure}[ht!]
 		\begin{minipage}[t]{0.45\textwidth}
 			\includegraphics[width=1.0\textwidth]{plots/speedup}
-			\caption{Execution time of the GPU algorithm compared to the serial one}
+			\caption{Execution time of the GPU algorithm compared to the sequential one}
 			\label{fig:speedup}
 		\end{minipage}\hfill
 		\begin{minipage}[t]{0.45\textwidth}
 			\includegraphics[width=1.0\textwidth]{plots/n_rew}
-			\caption{Evolution of mean connectivity for different number of nodes rewired each epoch; $N=1000$}
+			\caption{Evolution of mean connectivity for different $N_{rew}$; $N=1000$}
+			\label{fig:nrew}
 		\end{minipage}
 	\end{figure}
 	
-	\paragraph{Rewiring more than one node per epoch.}
+	\paragraph{Rewiring more than one node per epoch.} In order to determine how $N_{rew}$ influences the rate of convergence to a dynamical equilibrium, we performed $1000$ epochs of evolution with $N=1000$ and $N_{rew}=[1, 5]$. The results of these simulations are shown in Figure \ref{fig:nrew}. With increased value of $N_{rew}$ mean connectivity grows faster and the system reaches steady state at approximately 500th epoch for $N_{rew}=5$. We limited the attractor length to $\mu_{max}=10^7$ for these experiments.
 	
-	\paragraph{Limiting the maximum attractor length.}
+	\paragraph{Limiting the maximum attractor length.} Introducing a limit on attractor length leads to a situation when an attractor can not be found. In these cases $N_{rew}$ nodes are rewired according to their activity during the last $\mu_max$ state updates. These states can belong either to a transient period or an attractor. However, the results of our experiments, presented in Tables \ref{table:percentage_of_attractors}, \ref{table:kss}, indicate that low percentage of attractors found does not influence the steady state connectivity obtained as a result of the evolution process.
 	
 	\begin{table}[ht!]
 		\centering
@@ -242,7 +243,8 @@ The modified algorithm of ARBN evolution consists of a set of consecutive epochs
 			$5 \cdot 10^6$	&	100.00	&	99.53	&	94.40	&	73.00	&	49.22\\
 			$1 \cdot 10^7$	&	100.00	&	99.75	&	96.08	&	77.73	&	53.81\\
 		\end{tabular}
-		\caption{Percentage $R$ of attractors found during the evolution process with attractor length limited by $\mu_{max}$}
+		\caption{$R$ (percentage of attractors found) for different $N$ and $\mu_{max}$}
+		\label{table:percentage_of_attractors}
 	\end{table}
 	\begin{table}[ht!]
 		\centering
@@ -257,9 +259,11 @@ The modified algorithm of ARBN evolution consists of a set of consecutive epochs
 			$5 \cdot 10^6$	&	2.69	&	2.59	&	2.55	&	2.52	&	2.48\\
 			$1 \cdot 10^7$	&	2.68	&	2.62	&	2.55	&	2.51	&	2.48\\
 		\end{tabular}
-		\caption{Mean steady state connectivity $K_{ss}$ obtained as a result of evolution process with attractor length limited by $\mu_{max}$}
+		\caption{$K_{ss}$ for different $N$ and $\mu_{max}$}
+		\label{table:kss}
 	\end{table}
 	
+	\paragraph{Limiting the maximum attractor length.}
 	\begin{figure}[ht!]
 		\begin{minipage}[t]{0.45\textwidth}
 			\includegraphics[width=1.0\textwidth]{plots/evolution}
