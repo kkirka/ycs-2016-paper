@@ -185,10 +185,6 @@
 		\end{cases}
 	\end{equation}
 	
-	 Such representation supports different SpMV algorithms. These algorithms mainly aim at maximizing memory throughput and data locality, thus reducing the overall GPU kernel execution time. We chose compressed sparse-row (CSR) matrix storage format and implemented an SpMV kernel as described in \cite{bell2008efficient}, as it shows the best performance on unstructured matrices.
-	
-	However, the lenghts of attractors and transient periods grow faster than a power law[][] when the size of the network increases. This leads to a proportional growth of state updates one has to perform to find an attractor. The number of state updates turned out to be more important to the algorithm performance due to the lags between GPU kernel launches and the need to transfer data back from the GPU. 
-	
 	\paragraph{III. Limiting the number of state updates.} For RBN in a critical state, lengths of attractors and transients tend to have a power-law distribution with an exponent of -1 \cite{greil2009attractor}. This implies that a number of attractors with a given length is in inverse proportion to that length, i.e. a major part of attractors has comparatively small lengths. During evolution of ARBN, the goal is to find an attractor at each epoch, and then modify the topology of a network according to a state of a randomly chosen node on the attractor. While searching for an attractor, one can add a limitation on a maximum number of iterations which will be examined for a single epoch. In Liu-Bassler algorithm this limitation is a part of the algorithm itself (as it has predefined checkpoints) while in Knuth's algorithm is can be added artificially. The logic behind this approach is that lengthy attractors are rare, so a limitation can be set in a way that will not significantly influence the dynamic of convergence to a steady state. In this study we address the question: to what extent such limiting influence the qualitative results of simulation? In other words, we study how the results of ARBN evolution will differ if we eliminate from consideration a part of lengthy attractors (extending the results which were reported in \cite{Gorski2016}).
 	\paragraph{IV. Rewiring different number of nodes per epoch.} I (heuristics for attractor's search), II (parallel algorithm of updating the states) and III (limiting the number of state updates) are aimed to reduce an execution time of a single epoch. The total execution time is equal to the summation of times for all epochs, and the total number of epochs should be sufficient to reach the steady state. Therefore, another way to speed up the modeling process is to reduce a number of epochs which is required to achieve steady state. In this paper, we propose to perform it by a modification of ADRR intoduced in \cite{mlb}. Instead of rewiring a single node per epoch, we suggest to use several nodes as it could speed up the convergence to a steady state (especially for large networks) and, as a result, significantly decrease total time of simulation.
 	
@@ -280,7 +276,6 @@ The modified algorithm of ARBN evolution consists of a set of consecutive epochs
 		\end{minipage}
 	\end{figure}
 	%------------------------------------------------------------------------------
-	\clearpage
 	\section{Conclusion}
 	The enormous size of RBN ensemble makes them appropriate to model various complex systems but also raises significant challenges for their numerical investigation. Even a problem of search for a single attractor of RBN is computationally hard for a networks larger than several dozens of nodes because of an exponential growth of a number of iterations with an increase of a network size.
 	
